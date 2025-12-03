@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="description"
+          content="AGORA: Adversarial Generation Of Real-time Animatable 3D Gaussian Head Avatars">
+    <meta name="keywords"
+          content="AGORA, 3D generation, animatable avatars, 3D Gaussian Splatting, GAN, 3D GAN, FLAME, head avatars">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AGORA: Adversarial Generation Of Real-time Animatable 3D Gaussian Head Avatars</title>
+
+    <link rel="stylesheet" href="./static/css/bulma.min.css">
+    <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
+    <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
+    <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+    <link rel="stylesheet" href="./static/css/index.css">
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script defer src="./static/js/fontawesome.all.min.js"></script>
+    <script src="./static/js/bulma-carousel.js"></script>
+    <script src="./static/js/bulma-slider.min.js"></script>
+    <script src="./static/js/index.js"></script>
+</head>
+
+<body>
+
+<!-- Title, Authors & Link Capsules -->
+<section class="hero section-title">
+    <div class="container is-max-desktop">
+        <div class="columns is-centered">
+            <div class="column has-text-centered">
+                <h1 class="title is-1 publication-title">
+                    <span class="ours-title">
+                    AGORA
+                    </span>
+                    <br/>Adversarial Generation Of Real-time Animatable 3D Gaussian Head Avatars
+                </h1>
+
+                <div class="is-size-5 publication-authors">
+                    <span class="author-block">
+                        <a href="https://ramazan793.github.io/" target="_blank">Ramazan Fazylov</a><sup>1</sup>,
+                    </span>
+                    <span class="author-block">
+                        <a href="https://scholar.google.com/citations?user=EqJw1-4AAAAJ" target="_blank">Sergey Zagoruyko</a><sup>2</sup>,
+                    </span>
+                    <span class="author-block">
+                        <a href="https://scholar.google.com/citations?user=XsSMhMgAAAAJ" target="_blank">Aleksandr Parkin</a><sup>3</sup>,
+                    </span>
+                    <span class="author-block">
+                        <a href="https://scholar.google.com/citations?user=3Bawtm4AAAAJ" target="_blank">Stamatis Lefkimmiatis</a><sup>3</sup>,
+                    </span>
+                    <span class="author-block">
+                        <a href="https://scholar.google.com/citations?user=-9ifK0cAAAAJ" target="_blank">Ivan Laptev</a><sup>1</sup>
+                    </span>
+                </div>
+
+                <div class="is-size-5 publication-authors">
+                    <span class="author-block"><sup>1</sup>MBZUAI, Abu Dhabi, UAE</span>,
+                    <span class="author-block"><sup>2</sup>Polynome AI, Dubai, UAE</span>,
+                    <span class="author-block"><sup>3</sup>MTS AI, Moscow, Russia</span>
+                </div>
+
+
+                <div class="column has-text-centered">
+                    <div class="publication-links">
+                        <!-- PDF Link. -->
+                        <span class="link-block">
+                            <a href="https://arxiv.org/abs/2412.00000"
+                               target="_blank"
+                               class="external-link button is-normal is-rounded is-dark">
+                              <span class="icon">
+                                  <i class="ai ai-arxiv"></i>
+                              </span>
+                              <span>arXiv</span>
+                            </a>
+                        </span>
+
+                        <!-- Code Link. -->
+                        <span class="link-block">
+                            <a href="https://github.com/ramazan793/agora" target="_blank"
+                               class="external-link button is-normal is-rounded is-dark">
+                              <span class="icon">
+                                  <i class="fab fa-github"></i>
+                              </span>
+                              <span>Code</span>
+                            </a>
+                        </span>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="hero teaser">
+    <div class="container is-max-desktop">
+        <div class="hero-body">
+            <video id="teaser" controls height="100%" style="width: 100%; max-width: 100%;">
+                <source src="./static/videos/teaser.mp4" type="video/mp4">
+            </video>
+        </div>
+    </div>
+
+    <!-- Abstract -->
+    <div class="container is-max-desktop">
+        <div class="columns is-centered has-text-centered">
+            <div class="column is-four-fifths">
+                <h2 class="title is-3">Abstract</h2>
+                <div class="content has-text-justified">
+                    <p>
+                        The generation of high-fidelity, animatable 3D human avatars remains a core challenge in computer graphics and vision, with applications in VR, telepresence, and entertainment. Existing approaches based on implicit representations like NeRFs suffer from slow rendering and dynamic inconsistencies, while 3D Gaussian Splatting (3DGS) methods are typically limited to static head generation, lacking dynamic control.
+                    </p>
+                    <p>
+                        We bridge this gap by introducing <strong>AGORA</strong>, a novel framework that extends 3DGS within a generative adversarial network to produce animatable avatars. Our key contribution is a lightweight, FLAME-conditioned deformation branch that predicts per-Gaussian residuals, enabling identity-preserving, fine-grained expression control while allowing real-time inference. Expression fidelity is enforced via a dual-discriminator training scheme leveraging synthetic renderings of the parametric mesh.
+                    </p>
+                    <p>
+                        AGORA generates avatars that are not only visually realistic but also precisely controllable. Quantitatively, we outperform state-of-the-art NeRF-based methods on expression accuracy while rendering at <strong>250+ FPS</strong> on a single GPU, and, notably, at <strong>~9 FPS under CPU-only inference</strong> – representing, to our knowledge, the first demonstration of practical CPU-only animatable 3DGS avatar synthesis. This work represents a significant step toward practical, high-performance digital humans.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Method -->
+<section class="section">
+    <div class="container is-max-desktop">
+        <div class="columns is-centered">
+            <div class="column is-full-width">
+                <h2 class="title is-3 has-text-centered">Method Overview</h2>
+                <img src="static/images/method_overview.png" width="100%"/>
+                <div class="content has-text-justified">
+                    <p>
+                        <strong>AGORA</strong> adopts a 3D GAN framework to learn an animatable 3D head generation model from 2D image datasets. The architecture consists of two main components:
+                    </p>
+                    <h4>Dual-Branch Architecture</h4>
+                    <ul>
+                        <li>
+                            <strong>Identity-specific branch:</strong> A StyleGAN-based generator G produces canonical 3DGS attributes (position, scale, rotation, color, opacity) in UV space, conditioned on the FLAME shape code β. This encodes the static identity of the avatar.
+                        </li>
+                        <li>
+                            <strong>Expression-specific branch:</strong> A lightweight deformation branch G<sub>d</sub> takes low-resolution feature maps from the main generator and is conditioned on FLAME expression ψ and jaw pose θ via style modulation. It predicts attribute residuals that are composed with the canonical attributes.
+                        </li>
+                    </ul>
+                    <p>
+                        The final 3D position of each Gaussian is obtained via 3D lifting: we interpolate a base position from the articulated FLAME mesh at UV coordinates and add the predicted offset. This design anchors the generated 3DGS to the underlying parametric mesh, providing a structured basis for animation.
+                    </p>
+                    <h4>Dual-Discrimination</h4>
+                    <p>
+                        To enforce expression consistency, we adopt a dual-discrimination scheme. The discriminator is conditioned on the target expression by concatenating the rendered image with a synthetic rendering of the FLAME mesh, where vertices are color-coded by their expression-isolated vertex displacement from the neutral pose. This allows the discriminator to penalize fine-grained deviations in expression.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section" id="BibTeX">
+    <div class="container is-max-desktop content">
+        <h2 class="title" style="text-align: center">BibTeX</h2>
+        <pre><code>@article{fazylov2025agora,
+    author = {Fazylov, Ramazan and Zagoruyko, Sergey and Parkin, Aleksandr and Lefkimmiatis, Stamatis and Laptev, Ivan},
+    title = {{AGORA: Adversarial Generation Of Real-time Animatable 3D Gaussian Head Avatars}},
+    journal = {arXiv preprint arXiv: NOT YET ON ARXIV, ETA FEW DAYS},
+    year = {2025}
+}</code></pre>
+    </div>
+</section>
+
+</body>
+
+<footer class="footer">
+    <div class="container">
+        <div class="columns">
+            <div class="column is-full-width">
+                <div class="content has-text-centered">
+                    <p>
+                        Website template from <a href="https://keunhong.com/">Keunhong Park</a>'s <a
+                            href="https://nerfies.github.io/">Nerfies website</a>.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</footer>
+
+</html>
+
