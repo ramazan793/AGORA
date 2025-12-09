@@ -10,6 +10,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>AGORA: Adversarial Generation Of Real-time Animatable 3D Gaussian Head Avatars</title>
 
+    <link rel="icon" type="image/png" href="./static/images/crop_mount_icon.png">
     <link rel="stylesheet" href="./static/css/bulma.min.css">
     <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
     <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
@@ -68,7 +69,7 @@
                     <div class="publication-links">
                         <!-- PDF Link. -->
                         <span class="link-block">
-                            <a href="https://arxiv.org/abs/2412.00000"
+                            <a href="https://arxiv.org/abs/2512.06438"
                                target="_blank"
                                class="external-link button is-normal is-rounded is-dark">
                               <span class="icon">
@@ -193,13 +194,119 @@
     </div>
 </section>
 
+<!-- In-the-Wild Comparisons -->
+<section class="section">
+    <div class="container is-max-desktop">
+        <h2 class="title is-3 has-text-centered">More In-the-Wild Avatar Results</h2>
+        <div class="columns is-centered has-text-centered">
+            <div class="column is-four-fifths">
+                <p class="content">
+                    Comparison of avatar reenactment methods. <strong>Left:</strong> Ours, <strong>Center:</strong> Driving video, <strong>Right:</strong> Next3D.
+                </p>
+            </div>
+        </div>
+        <div class="video-carousel">
+            <div class="carousel-container">
+                <button class="carousel-btn carousel-btn-prev" onclick="changeSlide(-1)">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="carousel-video-wrapper">
+                    <video id="carousel-video" autoplay muted loop playsinline>
+                        <source src="./static/videos/1_rainn_wilson_magnus_wild.mp4" type="video/mp4">
+                    </video>
+                </div>
+                <button class="carousel-btn carousel-btn-next" onclick="changeSlide(1)">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+            <div class="carousel-pagination" id="carousel-pagination"></div>
+        </div>
+    </div>
+</section>
+
+<script>
+    const videoSources = [
+        './static/videos/1_rainn_wilson_magnus_wild.mp4',
+        './static/videos/2_lionel_messi_drive_images_gaia.mp4',
+        './static/videos/3_chris_pratt_obama_next3d.mp4',
+        './static/videos/4_christopher_walken_drive_images_gaia.mp4',
+        './static/videos/5_daniel_craig_magnus_wild.mp4',
+        './static/videos/6_david_lynch_friedman_durov.mp4',
+        './static/videos/7_charlize_teron_ID_3_MAU_strong_C_head512.mp4',
+        './static/videos/8_hugh_jackman_ID_2_FF_NR_C_head512.mp4',
+        './static/videos/9_elizabeth_second_laura_bergells.mp4',
+        './static/videos/10_jillian_anderson_ID_3_FF_C_head512.mp4',
+        './static/videos/11_kyle_maclachlen_obama_next3d.mp4',
+        './static/videos/12_steve_buscemi_ID_1_FF_NR_C_head512.mp4',
+        './static/videos/13_tom_cruise_drive_images_gaia.mp4'
+    ];
+    let currentSlide = 0;
+
+    function initCarousel() {
+        const pagination = document.getElementById('carousel-pagination');
+        videoSources.forEach((_, index) => {
+            const dot = document.createElement('button');
+            dot.className = 'carousel-dot' + (index === 0 ? ' active' : '');
+            dot.onclick = () => goToSlide(index);
+            pagination.appendChild(dot);
+        });
+    }
+
+    function changeSlide(direction) {
+        currentSlide = (currentSlide + direction + videoSources.length) % videoSources.length;
+        updateCarousel();
+    }
+
+    function goToSlide(index) {
+        currentSlide = index;
+        updateCarousel();
+    }
+
+    function updateCarousel() {
+        const video = document.getElementById('carousel-video');
+        video.src = videoSources[currentSlide];
+        video.load();
+        video.play();
+        
+        document.querySelectorAll('.carousel-dot').forEach((dot, index) => {
+            dot.classList.toggle('active', index === currentSlide);
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', initCarousel);
+    
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') changeSlide(-1);
+        if (e.key === 'ArrowRight') changeSlide(1);
+    });
+</script>
+
+<!-- Acknowledgements -->
+<section class="section">
+    <div class="container is-max-desktop">
+        <h2 class="title is-3 has-text-centered">Acknowledgements</h2>
+        <div class="content has-text-justified">
+            <p>
+                This work builds upon <a href="https://github.com/tobias-kirschstein/gghead" target="_blank"><strong>GGHEAD</strong></a>, whose UV-based 3D Gaussian generation framework served as the foundation for our approach. We are grateful for their excellent codebase and insights.
+            </p>
+            <p>
+                We also acknowledge <a href="https://github.com/NVlabs/eg3d" target="_blank">EG3D</a> for its pioneering work in 3D-aware generative models, and <a href="https://github.com/MrTornado24/Next3D" target="_blank">Next3D</a>, which inspired key aspects of our methodology. We thank the authors of concurrent work <a href="https://research.nvidia.com/labs/amri/projects/gaia/" target="_blank">GAIA</a> for providing visual results for comparison.
+            </p>
+            <p>
+                We are also grateful to the developers of <a href="https://github.com/nerfstudio-project/gsplat" target="_blank"><strong>gsplat</strong></a> for their efficient and easy-to-use Gaussian splatting library, which we use for rasterization.
+            </p>
+        </div>
+    </div>
+</section>
+
 <section class="section" id="BibTeX">
     <div class="container is-max-desktop content">
         <h2 class="title" style="text-align: center">BibTeX</h2>
         <pre><code>@article{fazylov2025agora,
     author = {Fazylov, Ramazan and Zagoruyko, Sergey and Parkin, Aleksandr and Lefkimmiatis, Stamatis and Laptev, Ivan},
     title = {{AGORA: Adversarial Generation Of Real-time Animatable 3D Gaussian Head Avatars}},
-    journal = {arXiv preprint arXiv: NOT YET ON ARXIV, ETA FEW DAYS},
+    journal = {arXiv preprint arXiv:2512.06438},
     year = {2025}
 }</code></pre>
     </div>
