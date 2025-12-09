@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img src="https://ramazan793.github.io/agora/static/images/method_overview.png" width="100%">
+  <img src="https://ramazan793.github.io/AGORA/static/images/method_overview.png" width="100%">
 </p>
 
 > **AGORA** generates high-fidelity, animatable 3D Gaussian head avatars that render at **250+ FPS** on GPU and **~9 FPS on CPU-only inference**.
