@@ -99,3 +99,107 @@ a:hover {
     user-select: none; /* Non-prefixed version, currently
                                   supported by Chrome, Edge, Opera and Firefox */
 }
+
+/* Video Carousel Styling */
+.video-carousel {
+    position: relative;
+    width: 100%;
+}
+
+.carousel-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+}
+
+.carousel-video-wrapper {
+    flex: 1;
+    max-width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.carousel-video-wrapper video {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.carousel-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.95);
+    border: none;
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    transition: all 0.2s ease;
+    z-index: 10;
+    color: #363636;
+    font-size: 18px;
+}
+
+.carousel-btn:hover {
+    background: #fff;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    transform: translateY(-50%) scale(1.05);
+}
+
+.carousel-btn-prev {
+    left: -24px;
+}
+
+.carousel-btn-next {
+    right: -24px;
+}
+
+@media (max-width: 768px) {
+    .carousel-btn-prev {
+        left: 8px;
+    }
+    .carousel-btn-next {
+        right: 8px;
+    }
+    .carousel-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 14px;
+        background: rgba(255, 255, 255, 0.85);
+    }
+}
+
+.carousel-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 20px;
+}
+
+.carousel-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: none;
+    background: #dbdbdb;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+.carousel-dot:hover {
+    background: #b5b5b5;
+}
+
+.carousel-dot.active {
+    background: #0065bd;
+    transform: scale(1.2);
+}
