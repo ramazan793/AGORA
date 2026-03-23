@@ -1,9 +1,8 @@
 /* Title & Logo */
 
 .section-title {
-    background-color: #f5f5f5;
-    padding: 1.5rem;
-
+    background: linear-gradient(180deg, #ffffff 0%, #f0f4f8 100%);
+    padding: 2rem 1.5rem 1rem 1.5rem;
 }
 
 .publication-title {
