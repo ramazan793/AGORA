@@ -1859,7 +1859,7 @@ async function main() {
     async function loadPCAAssets(seedDir) {
         // seedDir: per-identity dir (e.g. 'data/seed_110')
         // PCA basis is always loaded from 'data/' (shared across identities)
-        const basisDir = 'data';
+        const basisDir = 'https://huggingface.co/datasets/ramazan/AGORA-demo-data/resolve/main';
         if (!extColorFloat) {
             console.warn('loadPCAAssets: EXT_color_buffer_float unavailable, skipping.');
             return;

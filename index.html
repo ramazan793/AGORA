@@ -105,8 +105,61 @@
             </div>
         </div>
     </div>
+</section>
 
-    <!-- Abstract -->
+<!-- Mobile Animation Demo -->
+<section class="section" id="demo">
+    <div class="container is-max-desktop">
+        <h2 class="title is-3 has-text-centered">Mobile Animation Demo</h2>
+        <div class="columns is-centered has-text-centered">
+            <div class="column is-four-fifths">
+                <p class="content">
+                    <strong>AGORA-M</strong> running in your browser via WebGL2, driven by a pre-recorded expression sequence.
+                    <strong>Animations are being calculated in your browser!</strong> Click an identity to switch. Drag to orbit.
+                </p>
+            </div>
+        </div>
+        <div class="demo-wrapper">
+            <div class="demo-viewer">
+                <div class="demo-iframe-container">
+                    <iframe id="demo-iframe" src="" allow="accelerometer; gyroscope" allowfullscreen></iframe>
+                    <div class="demo-loading" id="demo-loading" style="display:none;">Loading…</div>
+                    <div class="demo-play-overlay" id="demo-play-overlay" onclick="startDemo()">
+                        <div class="demo-play-btn">
+                            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7z"/></svg>
+                        </div>
+                        <p>Interactive 3DGS Demo</p>
+                        <p class="demo-play-size">~250 MB · WebGL2</p>
+                    </div>
+                </div>
+            </div>
+            <div class="demo-identity-picker">
+                <div class="identity-card active" data-seed="110" onclick="switchIdentity(this)">
+                    <img src="./static/images/seeds/seed_110.png" alt="Identity 110">
+                </div>
+                <div class="identity-card" data-seed="4" onclick="switchIdentity(this)">
+                    <img src="./static/images/seeds/seed_4.png" alt="Identity 4">
+                </div>
+                <div class="identity-card" data-seed="17" onclick="switchIdentity(this)">
+                    <img src="./static/images/seeds/seed_17.png" alt="Identity 17">
+                </div>
+                <div class="identity-card" data-seed="109" onclick="switchIdentity(this)">
+                    <img src="./static/images/seeds/seed_109.png" alt="Identity 109">
+                </div>
+            </div>
+        </div>
+        <div class="columns is-centered has-text-centered" style="margin-top: 1rem;">
+            <div class="column is-four-fifths">
+                <p class="is-size-7 has-text-grey">
+                    * Some visual artifacts may be present due to a mismatch between the vanilla 3DGS rendering used in the WebGL viewer and the anti-aliased gsplat rasterizer used during training. We are working on fixing this.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Abstract -->
+<section class="section">
     <div class="container is-max-desktop">
         <div class="columns is-centered has-text-centered">
             <div class="column is-four-fifths">
@@ -155,6 +208,53 @@
         </div>
     </div>
 </section>
+
+
+<script>
+(function() {
+    const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent)
+        || (navigator.maxTouchPoints > 1 && window.innerWidth < 1024);
+    const kValue = isMobile ? 32 : 64;
+    let currentSeed = 110;
+    let demoLoaded = false;
+    let demoStarted = false;
+
+    const iframe = document.getElementById('demo-iframe');
+
+    iframe.addEventListener('load', function() {
+        if (!demoStarted) return;
+        document.getElementById('demo-loading').style.display = 'none';
+        demoLoaded = true;
+    });
+
+    window.startDemo = function() {
+        if (demoStarted) return;
+        demoStarted = true;
+        document.getElementById('demo-play-overlay').style.display = 'none';
+        document.getElementById('demo-loading').style.display = 'flex';
+        iframe.src = `./demo/?seed=${currentSeed}&k=${kValue}&aa=1&suppress_scale=1`;
+    };
+
+    window.switchIdentity = function(el) {
+        const seed = parseInt(el.dataset.seed, 10);
+        document.querySelectorAll('.identity-card').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+        currentSeed = seed;
+
+        if (!demoStarted) return; // will use currentSeed when Play is pressed
+
+        if (demoLoaded && iframe.contentWindow) {
+            // Send postMessage — demo swaps only per-identity assets, keeps PCA basis
+            iframe.contentWindow.postMessage(
+                { type: 'switchSeed', seedDir: 'data/seed_' + seed },
+                '*'
+            );
+        } else {
+            iframe.src = `./demo/?seed=${seed}&k=${kValue}&aa=1&suppress_scale=1`;
+        }
+    };
+})();
+</script>
 
 <!-- Generated Avatars -->
 <section class="section">
@@ -287,10 +387,13 @@
                 This work builds upon <a href="https://github.com/tobias-kirschstein/gghead" target="_blank"><strong>GGHEAD</strong></a>, whose UV-based 3D Gaussian generation framework served as the foundation for our approach. We are grateful for their excellent codebase and insights.
             </p>
             <p>
-                We acknowledge <a href="https://github.com/NVlabs/eg3d" target="_blank">EG3D</a> for its pioneering work in 3D-aware generative models, and <a href="https://github.com/MrTornado24/Next3D" target="_blank">Next3D</a>, which inspired our dual-discrimination design. We also thank the authors of <a href="https://research.nvidia.com/labs/amri/projects/gaia/" target="_blank"><strong>GAIA</strong></a> — a concurrent work that independently explores expression-conditioned 3DGS generation — for sharing visual results and enabling direct comparison.
+                We acknowledge <a href="https://github.com/NVlabs/eg3d" target="_blank">EG3D</a> for its pioneering work in 3D-aware generative models, and <a href="https://github.com/MrTornado24/Next3D" target="_blank">Next3D</a>, which inspired our dual-discrimination design. We also thank the authors of <a href="https://research.nvidia.com/labs/amri/projects/gaia/" target="_blank"><strong>GAIA</strong></a> — a recent work that independently explores expression-conditioned 3DGS generation — for sharing visual results and enabling direct comparison.
             </p>
             <p>
                 We are also grateful to the developers of <a href="https://github.com/nerfstudio-project/gsplat" target="_blank"><strong>gsplat</strong></a> for their efficient and easy-to-use Gaussian splatting library, which we use for rasterization.
+            </p>
+            <p>
+                The interactive browser demo builds upon the WebGL2 3D Gaussian Splatting viewer by <a href="https://github.com/antimatter15/splat" target="_blank"><strong>antimatter15</strong></a>, which we extended with a GPU compute pipeline for real-time blendshape evaluation.
             </p>
         </div>
     </div>
