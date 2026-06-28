@@ -1,0 +1,14 @@
+# Driving clips for reenactment, one per line. Lines starting with '#' are ignored.
+#
+# Two accepted forms:
+#   1. A single folder token:                 /path/to/reenact_test_videos/<name>
+#      -> auto-derives  vid_processed_path = <folder>/smirk  and  gt_img_path = <folder>
+#   2. An explicit comma-separated pair:       /path/to/<name>/smirk,/path/to/<name>
+#
+# Each <name>/ must contain:
+#   <name>/smirk/<frame>/{shape,exp,globalpose,jawpose,cam,eyelid}.npy   (SMIRK-estimated FLAME)
+#   <name>/<frame>.png                                                   (RGB driving frames)
+# Process your own video with dependencies/smirk/demo_image_folder.py.
+
+# Example (edit to your own path):
+/data2/ramazan.fazylov/media/dgghead_workspace/reenact_test_videos/obama_next3d

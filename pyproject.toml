@@ -1,0 +1,87 @@
+[build-system]
+requires = ["setuptools<=72.1.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agora"
+version = "1.0.0"
+description = "AGORA: Animatable Gaussian Heads. Official implementation."
+readme = "README.md"
+license = { text = "Apache 2.0" }
+requires-python = ">=3.10,<3.11"
+classifiers = [
+    "Programming Language :: Python :: 3.10",
+    "Operating System :: OS Independent",
+]
+
+# Pure-Python / wheel dependencies. The 7 CUDA-compiled forks (gsplat,
+# gaussian_splatting, the 5 diff_gaussian_rasterization* variants, simple_knn,
+# pytorch3d, eg3d JIT ops) are installed separately against CUDA 11.8 — see
+# scripts/install_cuda_deps.sh / README (they are NOT resolved by uv).
+dependencies = [
+    # --- torch stack (cu118, see [tool.uv.sources]) ---
+    "torch==2.4.1",
+    "torchvision==0.19.1",
+    "torchaudio==2.4.1",
+    "numpy==1.24.3",
+    "triton==3.0.0",
+    # --- config / CLI / experiment management (Kirschstein stack) ---
+    "tyro==0.9.31",
+    "elias==0.4.18",
+    "environs==14.3.0",
+    "omegaconf==2.3.0",
+    "dreifus==0.1.25",
+    "visage==0.2.15",
+    # --- mesh / IO / video ---
+    "trimesh==4.7.4",
+    "plyfile==0.8.1",     # gaussian_splatting scene/dataset_readers (.ply IO)
+    "mediapy",
+    "imageio",
+    "imageio-ffmpeg",
+    "opencv-python-headless",
+    "scikit-image",
+    "scipy",
+    "matplotlib",
+    "pillow",
+    "tqdm",
+    "ninja",
+    "setuptools",          # required at runtime by torch.utils.cpp_extension (eg3d JIT ops); uv omits it by default
+    "wheel",
+    "open3d",              # threedim_utils.flame imports open3d (eager import in its __init__)
+    # --- training ---
+    "pytorch-lightning==2.5.4",
+    "wandb",
+    "psutil",              # eg3d train_loop (process/memory stats); import-time dep of training
+    # --- metrics ---
+    "insightface",        # ID metric (ArcFace / buffalo)
+    "onnxruntime",        # insightface backend
+    "mediapipe==0.10.21",  # face-region mask in reenactment; pinned: 0.10.30+ drops mediapipe.solutions (face_mesh). 0.10.21 matches the known-good gghead env. (reinstalling it re-bumps numpy -> re-pin numpy==1.24.3)
+    # --- SMIRK (AED/expression metric runs dependencies/smirk/demo_image_folder.py under THIS venv) ---
+    "timm",                   # smirk_encoder
+    "iopath",                 # pulled in by pytorch3d.io.obj_io
+    "chumpy",                 # unpickle FLAME generic_model.pkl (ok w/ numpy 1.24 via SMIRK FLAME.py monkeypatch)
+    "albumentations==1.3.1",  # smirk datasets/base_dataset.py; >=2.0 drags numpy>=2 which BREAKS the CUDA forks (ABI). KEEP PINNED.
+    # NOTE: env-build agent to finalize this list by iterating import errors of
+    # the release scripts (consult agents_notes/investigation/gghead_pip_list_freeze.txt
+    # for exact transitive versions). Likely additions: chumpy (FLAME .pkl unpickle;
+    # tricky w/ numpy>=1.24), click, psutil, requests, einops, lpips, scikit-learn.
+]
+
+[project.optional-dependencies]
+# EG3D interactive visualizer (not needed for the 4 release capabilities)
+viz = ["imgui==1.3.0", "glfw==2.2.0", "pyopengl==3.1.5"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["gghead*"]   # keep the '*' so submodules are found
+
+# --- uv: pull the torch trio from the CUDA 11.8 wheel index ---
+[[tool.uv.index]]
+name = "pytorch-cu118"
+url = "https://download.pytorch.org/whl/cu118"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu118" }
+torchvision = { index = "pytorch-cu118" }
+torchaudio = { index = "pytorch-cu118" }

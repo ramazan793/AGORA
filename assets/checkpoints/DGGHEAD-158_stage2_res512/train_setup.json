@@ -1,0 +1,20 @@
+{
+    "project_name": "generative-gaussian-heads",
+    "group_name": "gghead",
+    "gpus": 4,
+    "slurm_jobid": null,
+    "slurm_nodelist": null,
+    "accumulate_metrics": 64,
+    "metrics": [
+        "fid100",
+        "fid1k",
+        "fid10k"
+    ],
+    "resume_run": "DGGHEAD-157",
+    "reset_cur_nimg": false,
+    "resume_checkpoint": 19500,
+    "resume_just_init": 0,
+    "resume_load_D": 1,
+    "total_kimg": 25000,
+    "wandb_run_id": "canla2wr"
+}

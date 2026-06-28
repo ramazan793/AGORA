@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# uv / venv
+.venv/
+uv.lock.bak
+
+# Editors / local tooling
+.idea/
+.vscode/
+.ipynb_checkpoints/
+.claude/
+
+# Local working files / logs
+log.txt
+
+# Local env config
+.env
+.config/
+
+# Large / external — assembled locally, not committed (see README §3 "External dependencies")
+dependencies/
+
+# Working notes / handoffs (agent scratch)
+agents_notes/
+
+# Data, checkpoints, outputs
+data/
+logs/
+wandb/
+results/
+evaluations/
+checkpoints/
+*.pkl
+*.pt
+*.mp4
+*.zip
+*.npy
+
+# Keep small committed assets despite the *.npy/*.obj rules above.
+# (Note: no !src/** — src/ is code; let the __pycache__/*.pyc/*.egg-info rules above apply there.)
+!assets/**
+
+# ...but the big release weights stay OUT of git — host externally (gdrive); see README "Data & checkpoints".
+# Small templates (assets/gghead/*, assets/flame/*) and the checkpoint *.json configs above remain committed.
+assets/checkpoints/**/*.pkl
+assets/agora_m/*.pt
+assets/fused_params_dataset.npy
+
+# Generated outputs, agent scaffolding, and scripts intentionally excluded from the release
+scripts/**/vis/
+**/CLAUDE.md
+scripts/sample_heads.py
+scripts/render_interpolation.py
+scripts/cleanup_after_asset_move.sh

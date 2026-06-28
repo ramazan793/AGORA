@@ -1,0 +1,27 @@
+{
+    "path": "/data2/ramazan.fazylov/media/datasets/FFHQ_png_512/FFHQ_png_512.zip",
+    "base_path": null,
+    "resolution": 512,
+    "use_calibration": false,
+    "use_masks": true,
+    "mask_method": "modnet",
+    "apply_masks": true,
+    "return_masks": false,
+    "return_background": false,
+    "random_background": false,
+    "background_color": [
+        255,
+        255,
+        255
+    ],
+    "filter_ffhq": false,
+    "sample_weights_path": null,
+    "use_flame_cameras": 1,
+    "preload_params": true,
+    "fused_params_path": "/data2/ramazan.fazylov/code/notebooks/fused_params_dataset.npy",
+    "precomputed_flame_renderings": 1,
+    "max_size": 139826,
+    "use_labels": true,
+    "xflip": false,
+    "random_seed": 0
+}

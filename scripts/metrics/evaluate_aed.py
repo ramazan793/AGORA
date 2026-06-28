@@ -1,0 +1,446 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Optional, Dict, List, Tuple
+
+import os
+import sys
+import json
+import subprocess
+
+import numpy as np
+import torch
+from PIL import Image
+from tqdm.auto import tqdm
+
+import tyro
+
+
+# Ensure project is importable
+_agora_root = os.path.dirname(os.path.abspath(__file__))
+while _agora_root != os.path.dirname(_agora_root) and not os.path.isdir(os.path.join(_agora_root, "src", "gghead")):
+    _agora_root = os.path.dirname(_agora_root)
+if _agora_root not in sys.path:
+    sys.path.insert(0, _agora_root)
+
+from src.gghead.env import GGHEAD_DEPENDENCIES_PATH, REPO_ROOT_DIR
+
+
+@dataclass
+class Args:
+    # Model and generation settings
+    run_name: str = "DGGHEAD-132"
+    checkpoint: int = 23500
+    resolution: int = 512
+    num_sampled_z: int = 500
+    num_sampled_cam_exp: int = 20
+    cam_expcode_seed: int = 0
+    truncation_psi: float = 0.7
+    batch_size: int = 5
+    device: str = "cuda:5"
+
+    # Generation behavior toggles
+    synthesis_flame_cond: bool = True
+    cache_backbone: bool = True
+    fix_identity: bool = True
+    new_cameras: bool = True
+
+    # Paths
+    models_path: str = "/data3/ramazan.fazylov/media/dyn_gghead_stuff/logs/models/"
+    ffhq_fused_params_path: str = \
+        f"{REPO_ROOT_DIR}/assets/fused_params_dataset.npy"
+    dataset_path: str = \
+        "/data2/ramazan.fazylov/media/datasets/FFHQ_png_512/FFHQ_png_512.zip"
+    output_root: str = \
+        "/data3/ramazan.fazylov/media/dyn_gghead_stuff/evaluations/apd_aed_1/"
+    output_folder: Optional[str] = None
+
+    # Metrics
+    aed_num_components: int = 50
+
+    # Flow control
+    skip_generation: bool = False
+    skip_smirk: bool = False
+
+    # SMIRK configuration
+    smirk_repo_path: str = f"{GGHEAD_DEPENDENCIES_PATH}/smirk/"
+    # SMIRK runs as a subprocess. It now lives in the SAME environment as this
+    # metric (its deps — timm/iopath/chumpy/albumentations==1.3.1 — are in
+    # pyproject.toml), so default to the current interpreter. Override with
+    # --smirk-python-bin only if you keep SMIRK in a separate env.
+    smirk_python_bin: str = sys.executable
+    smirk_script_path: str = f"{GGHEAD_DEPENDENCIES_PATH}/smirk/demo_image_folder.py"
+    smirk_checkpoint: str = \
+        f"{GGHEAD_DEPENDENCIES_PATH}/smirk/pretrained_models/SMIRK_em1.pt"
+    smirk_render_orig: bool = True
+    smirk_output_subdir: str = "smirk"
+
+
+def _ensure_output_folder(args: Args) -> str:
+    if args.output_folder is None:
+        output_folder = os.path.join(
+            args.output_root.rstrip("/"),
+            f"{args.run_name}_{args.checkpoint}_seed{args.cam_expcode_seed}",
+        )
+    else:
+        output_folder = args.output_folder
+    os.makedirs(output_folder, exist_ok=True)
+    return output_folder
+
+
+def _extract_cuda_visible_devices(device_str: str) -> str:
+    if device_str.startswith("cuda:"):
+        return device_str.split(":", 1)[1]
+    return device_str
+
+
+def generate_samples(args: Args, output_folder: str) -> None:
+    from elias.util.batch import batchify_sliced
+    from dreifus.image import Img
+    from eg3d.datamanager.nersemble import decode_camera_params
+    os.environ["GGHEAD_MODELS_PATH"] = args.models_path
+    from src.gghead.model_manager.finder import find_model_manager
+    from src.gghead.dataset.image_folder_dataset import DGGHeadMaskImageFolderDataset
+
+
+    device = torch.device(args.device)
+
+    model_manager = find_model_manager(args.run_name)
+    resolved_ckpt = model_manager._resolve_checkpoint_id(args.checkpoint)
+    G = model_manager.load_checkpoint(resolved_ckpt, load_ema=True).to(device)
+    G._config.use_flame_rasterization = 0
+    
+    mapping_takes_flame_params = (
+        G._config.use_mouth_branch or G._config.use_extended_uv_generation or True
+    )
+
+    # Dataset
+    dataset_config = model_manager.load_dataset_config()
+    dataset_config.precomputed_flame_renderings = 0
+    dataset_config.path = args.dataset_path
+    eval_set = DGGHeadMaskImageFolderDataset(dataset_config.eval())
+
+    # Reference camera from FFHQ stats
+    ffhq_fused_params = np.load(args.ffhq_fused_params_path)
+    mean_cam = np.median(ffhq_fused_params[:, -6:], axis=0)
+    c_front = torch.tensor(mean_cam, device=device).unsqueeze(0)
+
+    rng = np.random.default_rng(args.cam_expcode_seed)
+    seeds = list(range(args.num_sampled_z))
+
+    all_cams: List[np.ndarray] = []
+    all_flame_params: List[np.ndarray] = []
+    all_fnames: List[str] = []
+
+    # Real images saving setup: single folder per seed config
+    reals_root = os.path.join(args.output_root, f"reals_seed{args.cam_expcode_seed}")
+    save_reals = (not os.path.exists(reals_root)) or (os.path.exists(reals_root) and len(os.listdir(reals_root)) == 0)
+    if save_reals:
+        os.makedirs(reals_root, exist_ok=True)
+
+    for cur_seed in tqdm(seeds, desc="Generating samples"):
+        sampled_indices = rng.integers(0, len(eval_set), size=args.num_sampled_cam_exp)
+        cams_np: List[np.ndarray] = []
+        flame_params_np: List[np.ndarray] = []
+        img_names: List[str] = []
+        real_imgs_np: List[Optional[np.ndarray]] = []
+
+        for idx in sampled_indices:
+            if args.new_cameras:
+                c = eval_set.get_camera_parameters(int(idx))
+                m = eval_set.get_flame_parameters(int(idx))
+            else:
+                c = eval_set._dataset_images.get_label(int(idx))
+                m = np.array(eval_set.get_flame_parameters(int(idx)))
+
+            if args.new_cameras:
+                img_name = eval_set._mesh_fnames[int(idx)].split(os.sep)[-2]
+            else:
+                img_name = eval_set._mesh_fnames[int(idx)].split(os.sep)[-2][:-2]
+
+            cams_np.append(c)
+            flame_params_np.append(m)
+            img_names.append(img_name)
+            if save_reals:
+                prev_res = eval_set._dataset_images._resolution
+                eval_set._dataset_images._resolution = 512
+                eval_set._dataset_images._raw_shape = (eval_set._dataset_images._raw_shape[0], 3, 512, 512)
+                real_img, _ = eval_set._dataset_images[int(idx)]
+                eval_set._dataset_images._resolution = prev_res
+                eval_set._dataset_images._raw_shape = (eval_set._dataset_images._raw_shape[0], 3, prev_res, prev_res)
+                
+                real_img = np.transpose(real_img, (1, 2, 0))
+                real_imgs_np.append(real_img)
+
+        cams = torch.tensor(np.array(cams_np), device=args.device)
+        flame_params = torch.from_numpy(np.stack(flame_params_np)).to(args.device)
+
+        if args.fix_identity:
+            flame_params[:, :300] = flame_params[0:1, :300]
+
+        all_cams.append(cams.detach().cpu().numpy())
+        all_flame_params.append(flame_params.detach().cpu().numpy())
+        all_fnames.extend(img_names)
+
+        if args.cache_backbone:
+            use_cached_backbone = False
+            cache_backbone = True
+        else:
+            use_cached_backbone = False
+            cache_backbone = False
+
+        with torch.no_grad():
+            t_rng = torch.Generator(device=args.device)
+            t_rng.manual_seed(int(cur_seed))
+            z = torch.randn((1, G._config.z_dim), device=device, generator=t_rng)
+
+            if args.new_cameras:
+                sh_ref_cam = c_front
+            else:
+                sh_ref_cam, _ = decode_camera_params(c_front[0].detach().cpu())
+
+            if not mapping_takes_flame_params:
+                w = G.mapping(z, c_front, truncation_psi=args.truncation_psi)
+                w = w.repeat(len(flame_params), 1, 1)
+            else:
+                w = torch.empty(len(flame_params), 1, 1, device=device)
+
+            c_render = cams
+            c_mapping = c_front.repeat(len(flame_params), 1)
+
+            j = 0
+            real_j = 0
+            for w_batch, c_render_batch, c_mapping_batch, fp_batch in zip(
+                batchify_sliced(w, batch_size=args.batch_size),
+                batchify_sliced(c_render, batch_size=args.batch_size),
+                batchify_sliced(c_mapping, batch_size=args.batch_size),
+                batchify_sliced(flame_params, batch_size=args.batch_size),
+            ):    
+                if mapping_takes_flame_params:
+                    z_batch = z.repeat(len(w_batch), 1)
+                    w_batch = G.mapping(
+                        z_batch,
+                        c_mapping_batch,
+                        truncation_psi=args.truncation_psi,
+                        flame_params=fp_batch,
+                        c2=fp_batch
+                    )
+
+                if args.synthesis_flame_cond:
+                    output = G.synthesis(
+                        w_batch,
+                        c_render_batch,
+                        fp_batch,
+                        sh_ref_cam=sh_ref_cam,
+                        return_masks=True,
+                        noise_mode="const",
+                        neural_rendering_resolution=args.resolution,
+                        use_cached_backbone=use_cached_backbone,
+                        cache_backbone=cache_backbone,
+                    )
+                else:
+                    output = G.synthesis(
+                        w_batch,
+                        c_render_batch,
+                        sh_ref_cam=sh_ref_cam,
+                        return_masks=True,
+                        noise_mode="const",
+                        neural_rendering_resolution=args.resolution,
+                        use_cached_backbone=use_cached_backbone,
+                        cache_backbone=cache_backbone,
+                    )
+
+                if args.cache_backbone:
+                    use_cached_backbone = True
+                    cache_backbone = False
+
+                frames = [
+                    Img.from_normalized_torch(image).to_numpy().img[..., :3]
+                    for image in output["image"]
+                ]
+
+                for frame in frames:
+                    Image.fromarray(frame).save(
+                        f"{output_folder}/{int(cur_seed):04d}_{int(j):04d}.png"
+                    )
+                    if save_reals and real_j < len(real_imgs_np):
+                        real_path = os.path.join(
+                            reals_root, f"{int(cur_seed):04d}_{int(real_j):04d}.png"
+                        )
+                        Image.fromarray(real_imgs_np[real_j]).save(real_path)
+                        real_j += 1
+                    j += 1
+
+    all_cams_np = np.concatenate(all_cams, axis=0)
+    all_flame_params_np = np.concatenate(all_flame_params, axis=0)
+    np.save(f"{output_folder}/gt_cams.npy", all_cams_np)
+    np.save(f"{output_folder}/gt_flame_params.npy", all_flame_params_np)
+    with open(f"{output_folder}/meta_fnames.json", "w") as f:
+        json.dump(all_fnames, f, indent=4)
+
+
+def run_smirk(args: Args, output_folder: str) -> None:
+    smirk_out = os.path.join(output_folder, args.smirk_output_subdir)
+    os.makedirs(smirk_out, exist_ok=True)
+
+    cuda_visible = _extract_cuda_visible_devices(args.device)
+
+    cmd: List[str] = [
+        args.smirk_python_bin,
+        args.smirk_script_path,
+        "--input_path",
+        output_folder,
+        "--out_path",
+        smirk_out,
+        "--checkpoint",
+        args.smirk_checkpoint,
+    ]
+    if args.smirk_render_orig:
+        cmd.append("--render_orig")
+
+    env = os.environ.copy()
+    env["CUDA_VISIBLE_DEVICES"] = cuda_visible
+
+    subprocess.run(cmd, check=True, cwd=args.smirk_repo_path, env=env)
+
+
+def compute_metrics(args: Args, output_folder: str) -> Dict[str, float]:
+    # Load GT and metadata
+    all_cams = np.load(f"{output_folder}/gt_cams.npy")
+    all_flame_params = np.load(f"{output_folder}/gt_flame_params.npy")
+    with open(f"{output_folder}/meta_fnames.json", "r") as f:
+        all_fnames = json.load(f)
+
+    smirk_result_folder = os.path.join(output_folder, args.smirk_output_subdir)
+
+    total_samples = int(args.num_sampled_z * args.num_sampled_cam_exp)
+    smirk_shapecodes = np.ones((total_samples, 300), dtype=np.float32) * np.nan
+    smirk_expcodes = np.ones((total_samples, 50), dtype=np.float32) * np.nan
+    smirk_globalposes = np.ones((total_samples, 3), dtype=np.float32) * np.nan
+    smirk_jawposes = np.ones((total_samples, 3), dtype=np.float32) * np.nan
+    smirk_eyelids = np.ones((total_samples, 2), dtype=np.float32) * np.nan
+
+    gen_img_name__to_gt_img_name: Dict[str, str] = {}
+    gen_img_names: List[Optional[str]] = [None] * total_samples
+
+    for folder in tqdm(os.listdir(smirk_result_folder), desc="Reading SMIRK outputs"):
+        folder_path = os.path.join(smirk_result_folder, folder)
+        if not os.path.isdir(folder_path):
+            continue
+        if len(os.listdir(folder_path)) == 0:
+            continue
+
+        img_name = folder
+        parts = img_name.split("_")
+        try:
+            img_seed = int(parts[-2])
+            img_j = int(parts[-1])
+        except Exception:
+            continue
+
+        img_idx = img_seed * args.num_sampled_cam_exp + img_j
+        if img_idx < 0 or img_idx >= total_samples:
+            continue
+
+        gen_img_name__to_gt_img_name[img_name] = all_fnames[img_idx]
+        gen_img_names[img_idx] = img_name
+
+        shapecode = np.load(os.path.join(folder_path, "shape.npy"))
+        expcode = np.load(os.path.join(folder_path, "exp.npy"))
+        globalpose = np.load(os.path.join(folder_path, "globalpose.npy"))
+        jawpose = np.load(os.path.join(folder_path, "jawpose.npy"))
+        eyelids = np.load(os.path.join(folder_path, "eyelid.npy"))
+
+        smirk_shapecodes[img_idx] = shapecode
+        smirk_expcodes[img_idx] = expcode
+        smirk_globalposes[img_idx] = globalpose
+        smirk_jawposes[img_idx] = jawpose
+        smirk_eyelids[img_idx] = eyelids
+
+    nan_mask = np.isnan(smirk_shapecodes).any(axis=1)
+    print("Number of bad samples for SMIRK: ", int(np.sum(nan_mask)))
+
+    def rmse(a: np.ndarray, b: np.ndarray) -> float:
+        return float(np.sqrt(((a - b) ** 2).mean()))
+
+    gt_shapecodes = all_flame_params[:, :300]
+    gt_expcodes = all_flame_params[:, 300:350]
+    gt_globalposes = all_flame_params[:, 350:353]
+    gt_jawposes = all_flame_params[:, 353:356]
+    gt_eyelids = all_flame_params[:, 356:358]
+
+    if nan_mask.any() and smirk_expcodes.shape[0] == total_samples:
+        keep = ~nan_mask
+        smirk_shapecodes = smirk_shapecodes[keep]
+        smirk_expcodes = smirk_expcodes[keep]
+        smirk_globalposes = smirk_globalposes[keep]
+        smirk_jawposes = smirk_jawposes[keep]
+        smirk_eyelids = smirk_eyelids[keep]
+        gt_shapecodes = gt_shapecodes[keep]
+        gt_expcodes = gt_expcodes[keep]
+        gt_globalposes = gt_globalposes[keep]
+        gt_jawposes = gt_jawposes[keep]
+        gt_eyelids = gt_eyelids[keep]
+
+    asd = rmse(smirk_shapecodes, gt_shapecodes)
+    ajd = rmse(smirk_jawposes, gt_jawposes)
+    agpd = rmse(smirk_globalposes, gt_globalposes)
+    aed = rmse(smirk_expcodes[:, : args.aed_num_components],
+               gt_expcodes[:, : args.aed_num_components])
+    aed_eyelids = rmse(smirk_eyelids, gt_eyelids)
+
+    metrics = {
+        "AED": aed,
+        "AJD": ajd,
+        "AGPD": agpd,
+        "ASD": asd,
+        "AED_eyelids": aed_eyelids,
+    }
+
+    print(
+        f"AED: {aed:.3f}, AJD: {ajd:.3f}, AGPD: {agpd:.3f}, "
+        f"ASD: {asd:.3f}, AED_eyelids: {aed_eyelids:.3f}"
+    )
+
+    with open(os.path.join(output_folder, "metrics.json"), "w") as f:
+        json.dump(metrics, f, indent=2)
+
+    print(output_folder)
+    return metrics
+
+
+def main() -> None:
+    args = tyro.cli(Args)
+
+    output_folder = _ensure_output_folder(args)
+
+    if not args.skip_generation:
+        generate_samples(args, output_folder)
+    else:
+        required_files = [
+            os.path.join(output_folder, "gt_cams.npy"),
+            os.path.join(output_folder, "gt_flame_params.npy"),
+            os.path.join(output_folder, "meta_fnames.json"),
+        ]
+        for f in required_files:
+            if not os.path.exists(f):
+                raise FileNotFoundError(
+                    f"Missing precomputed file for metrics due to skip_generation: {f}"
+                )
+
+    if not args.skip_smirk:
+        run_smirk(args, output_folder)
+    else:
+        smirk_out = os.path.join(output_folder, args.smirk_output_subdir)
+        if not os.path.isdir(smirk_out):
+            raise FileNotFoundError(
+                f"SMIRK output directory not found due to skip_smirk: {smirk_out}"
+            )
+
+    compute_metrics(args, output_folder)
+
+
+if __name__ == "__main__":
+    main()
+
+
