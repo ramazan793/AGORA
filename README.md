@@ -103,15 +103,20 @@ runtime; both are assembled locally (git-ignored, not committed):
 - `threedim_utils/` — a small FLAME-LBS + mesh/UV utility package, published as a companion repo:
   <https://github.com/ramazan793/threedim_utils> (clone into `dependencies/`). The canonical "with-mouth"
   model loads its `assets/flame_with_mouth_no_backhead_v3/` files (UV mesh, masks, vertex mapping) and
-  imports its `flame2020_lbs` code; the license-restricted `FLAME.pkl` must be added separately (see that
-  repo's README).
+  imports its `flame2020_lbs` code; the license-restricted `FLAME.pkl` is generated from your own FLAME 2020
+  download by its `build_flame_with_mouth.py` (see below).
 
 > **FLAME 2020 (download separately).** The FLAME 2020 model is **license-restricted** and is **not**
 > redistributed in this repo or in its dependency clones. Download it from the official
-> [FLAME website](https://flame.is.tue.mpg.de/) and place the model files where each component expects them:
-> SMIRK under `dependencies/smirk/assets/FLAME2020/`, and the with-mouth FLAME pickle under
-> `dependencies/threedim_utils/assets/flame_with_mouth_no_backhead_v3/FLAME.pkl` (see that repo's README for
-> the exact file list). Raw textures are not needed by the release pipeline.
+> [FLAME website](https://flame.is.tue.mpg.de/), place `generic_model.pkl` under
+> `dependencies/smirk/assets/FLAME2020/`, then build the with-mouth variant used by the canonical model
+> (FLAME with a mouth-interior mesh, so it is not downloadable as-is):
+>
+> ```bash
+> uv run --no-sync python dependencies/threedim_utils/build_flame_with_mouth.py
+> ```
+>
+> Raw textures are not needed by the release pipeline.
 
 These resolve under `<repo>/dependencies`; override the location with `GGHEAD_DEPENDENCIES_PATH`. (The in-repo
 `assets/` files are addressed relative to the repo root and are not affected by that variable.)
