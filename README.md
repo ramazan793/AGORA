@@ -1,6 +1,6 @@
 # AGORA: Adversarial Generation Of Real-time Animatable 3D Gaussian Head Avatars
 
-🎉 **Accepted to the ECCV 2026 Interactive Social Avatars (ISA) Workshop** 🎉
+<h2 align="center">🎉 Accepted to the ECCV 2026 Interactive Social Avatars (ISA) Workshop 🎉</h2>
 
 > The `agora_m` distillation module on the `main_experimental` branch was a preliminary experiment and is not part of the ECCV ISA workshop paper. This branch contains only the published AGORA model.
 
