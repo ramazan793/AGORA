@@ -49,7 +49,6 @@ checkpoints/
 # ...but the big release weights stay OUT of git — host externally (gdrive); see README "Data & checkpoints".
 # Small templates (assets/gghead/*, assets/flame/*) and the checkpoint *.json configs above remain committed.
 assets/checkpoints/**/*.pkl
-assets/agora_m/*.pt
 assets/fused_params_dataset.npy
 
 # Generated outputs, agent scaffolding, and scripts intentionally excluded from the release

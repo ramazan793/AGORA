@@ -1,5 +1,9 @@
 # AGORA: Adversarial Generation Of Real-time Animatable 3D Gaussian Head Avatars
 
+🎉 **Accepted to the ECCV 2026 Interactive Social Avatars (ISA) Workshop** 🎉
+
+> The `agora_m` distillation module on the `main_experimental` branch was a preliminary experiment and is not part of the ECCV ISA workshop paper. This branch contains only the published AGORA model.
+
 <p align="center">
   <a href="https://ramazan793.github.io/AGORA"><img src="https://img.shields.io/badge/Project-Page-blue.svg" alt="Project Page"></a>
   <a href="https://arxiv.org/abs/2512.06438"><img src="https://img.shields.io/badge/arXiv-2512.06438-b31b1b.svg" alt="arXiv"></a>
@@ -11,14 +15,12 @@
 
 > **AGORA** generates high-fidelity, animatable 3D Gaussian head avatars that render at **250+ FPS** on GPU and **~9 FPS on CPU-only inference**.
 
-This repository contains the official implementation. It covers four capabilities:
+This repository contains the official implementation. It covers three capabilities:
 
 1. **Inference** — generate an avatar from a random latent and drive (reenact) it with a video.
-2. **AGORA-M** — distill the per-frame deformation network into a compact, identity-independent
-   PCA + MLP module that bypasses the deformation branch at inference (mobile/real-time variant).
-3. **Metrics** — FID, FPS, ID (ArcFace identity consistency), and expression/pose errors
+2. **Metrics** — FID, FPS, ID (ArcFace identity consistency), and expression/pose errors
    (AED / AED-jaw / APD / ASD) re-estimated with SMIRK.
-4. **Training** — the two-stage GAN training recipe (stage 1 at 256², stage 2 progressively grown to 512²).
+3. **Training** — the two-stage GAN training recipe (stage 1 at 256², stage 2 progressively grown to 512²).
 
 > PTI / test-time inversion is **not** part of this release.
 
@@ -30,9 +32,8 @@ This repository contains the official implementation. It covers four capabilitie
 - [Data & checkpoints](#data--checkpoints)
 - [Quickstart](#quickstart)
 - [Inference (generate + reenact)](#1-inference--generate-and-reenact-an-avatar)
-- [AGORA-M (PCA + MLP distillation)](#2-agora-m--pca--mlp-distillation)
-- [Metrics](#3-metrics)
-- [Training](#4-training)
+- [Metrics](#2-metrics)
+- [Training](#3-training)
 - [Repository layout](#repository-layout)
 - [Troubleshooting / gotchas](#troubleshooting--gotchas)
 - [Acknowledgments](#acknowledgments)
@@ -165,7 +166,6 @@ These large assets live outside the repo. The concrete locations used for the pa
 > - `assets/checkpoints/DGGHEAD-148_stage1_res256/checkpoint-6500.pkl` (stage-1) and
 >   `assets/checkpoints/DGGHEAD-158_stage2_res512/checkpoint-20500.pkl` (stage-2) — the small config JSONs
 >   beside them **are** committed.
-> - `assets/agora_m/{svd_basis.pt, mlp_regressor.pt}` (AGORA-M, distilled from 158@20500).
 > - `assets/fused_params_dataset.npy` (~200 MB, FFHQ FLAME/camera priors).
 >
 > Together ~1.7 GB. Note the inference/metric scripts also load checkpoints **by run name from
@@ -239,59 +239,7 @@ Outputs (in `scripts/deform_blendshapes/results/dynamic_view/DGGHEAD-158_20500__
 
 ---
 
-## 2. AGORA-M — PCA + MLP distillation
-
-AGORA-M replaces the per-frame deformation network with a shared, identity-independent SVD basis plus a
-small MLP conditioned on `[W (512-dim identity), FLAME expression (55-dim)]`. This bypasses the
-deformation branch entirely at inference (the mobile/real-time variant).
-
-> **The release ships the paper-trained distilled module** in `assets/agora_m/` (`svd_basis.pt` +
-> `mlp_regressor.pt`, distilled from `DGGHEAD-158 @ 20500`). To just run AGORA-M, skip to
-> [Step 3](#step-3--reenact-with-the-distilled-module) and point at those files. Steps 1–2 are only needed
-> to re-distill from scratch.
-
-### Step 1 — build the shared SVD basis + training set
-
-```bash
-uv run --no-sync python scripts/deform_blendshapes_pca_v2/create_svd_basis_and_dataset.py \
-    --run-name DGGHEAD-158 --checkpoint 20500 \
-    --n-identities 50 --N-per-id 100 --K 64
-```
-
-→ `scripts/deform_blendshapes_pca_v2/data/DGGHEAD-158_20500_M50_Nper100_K64/svd_basis.pt`
-
-### Step 2 — train the MLP regressor
-
-```bash
-uv run --no-sync python scripts/deform_blendshapes_pca_v2/train_mlp_regressor.py \
-    --svd-data-path scripts/deform_blendshapes_pca_v2/data/DGGHEAD-158_20500_M50_Nper100_K64/svd_basis.pt \
-    --epochs 3000 --lr 1e-3
-```
-
-→ `.../DGGHEAD-158_20500_M50_Nper100_K64/mlp_regressor.pt`
-
-### Step 3 — reenact with the distilled module
-
-```bash
-uv run --no-sync python scripts/deform_blendshapes_pca_v2/reenact_avatar_multi_id__svd_mlp.py \
-    --run-name DGGHEAD-158 --checkpoint 20500 \
-    --svd-data-path assets/agora_m/svd_basis.pt --mlp-path assets/agora_m/mlp_regressor.pt \
-    --pairs-list scripts/reenact_list.txt --id-seed 10 --cam-scale 8
-```
-
-(Replace the two paths with your own `data/<tag>/{svd_basis,mlp_regressor}.pt` if you re-distilled in
-Steps 1–2.) `--cam-scale 8` is **required** — the SVD basis and W-codes are built with `c_front[0,3] = 8.0`,
-so inference must match. Writes a 4-panel comparison MP4 (`comparison_<vid>.mp4`: distilled approx | full
-neural | pixel error | driver) plus the individual panels.
-
-> Paper-quality hyperparameters are `--n-identities 50 --N-per-id 100 --K 64` (step 1) and `--epochs 3000`
-> (step 2). For a quick smoke test use `--n-identities 3 --N-per-id 10 --K 8` and `--epochs 200`.
-> Pass `--no-face-mask` to step 3 if your `mediapipe` build lacks `.solutions` (see
-> [gotchas](#troubleshooting--gotchas)).
-
----
-
-## 3. Metrics
+## 2. Metrics
 
 Run on the stage-2 model (`DGGHEAD-158 @ 20500`).
 
@@ -300,14 +248,14 @@ Run on the stage-2 model (`DGGHEAD-158 @ 20500`).
 ```bash
 uv run --no-sync python scripts/metrics/measure_fps.py
 ```
-Reports render-only FPS (excludes model load). Paper: **~330 FPS** at 512², batch 8.
+Reports render-only FPS (excludes model load). Paper: **250 FPS** at 512² on a single RTX A6000.
 
 ### FID
 
 ```bash
 uv run --no-sync python scripts/metrics/evaluate_fid.py DGGHEAD-158 --fid 50000 --local
 ```
-`--local` repoints the saved dataset path to `$GGHEAD_DATA_PATH`. Paper: **FID-50k ≈ 3.21**.
+`--local` repoints the saved dataset path to `$GGHEAD_DATA_PATH`. Paper: **FID-50k = 3.17**.
 
 ### ID (identity consistency)
 
@@ -333,7 +281,7 @@ SMIRK runs under the *current* interpreter (`sys.executable`), so no separate en
 
 ---
 
-## 4. Training
+## 3. Training
 
 Two-stage recipe. Set the env block first:
 
@@ -399,13 +347,11 @@ src/gghead/                       # the model package (import as `src.gghead`)
 scripts/
   train_gghead.py                 # GAN training entry point (stage 1 & 2)
   deform_blendshapes/             # Inference: create_blendshapes + reenact_avatar_multi_id (canonical, direct)
-  deform_blendshapes_pca_v2/      # AGORA-M: SVD basis → MLP regressor → distilled reenact
   metrics/                        # FID, FPS, ID, AED
 assets/
   gghead/                         # GGHEAD template meshes (.obj/.mtl) + deform masks / uv-position weights
   flame/                          # small FLAME2020 template (uv->3d vertex mapping)
   checkpoints/                    # DGGHEAD-148 / -158 config JSONs (committed); *.pkl git-ignored -> host externally
-  agora_m/                        # distilled svd_basis.pt + mlp_regressor.pt (git-ignored -> host externally)
   fused_params_dataset.npy        # FFHQ FLAME/camera priors (git-ignored -> host externally)
 dependencies/                     # external clones only: smirk/ + threedim_utils/ (assembled locally, git-ignored)
 pyproject.toml                    # uv-managed Python deps (CUDA forks installed separately)
@@ -427,9 +373,6 @@ pyproject.toml                    # uv-managed Python deps (CUDA forks installed
   yourself (`PATH=$PWD/.venv/bin:$PATH`).
 - **FID reports "Found 0 meshes / no image files"** — your dataset path contains `data3`; move it to a path
   without that substring (see the loader rewrite warning above).
-- **`module 'mediapipe' has no attribute 'solutions'`** — the installed `mediapipe` build lacks the classic
-  `solutions` API; this only affects the optional face-region error overlay in AGORA-M reenactment. Pass
-  `--no-face-mask`, or pin a `mediapipe` version that exposes `mediapipe.solutions`.
 
 ---
 
