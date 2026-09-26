@@ -1,5 +1,7 @@
 # AGORA: Adversarial Generation Of Real-time Animatable 3D Gaussian Head Avatars
 
+> **Preliminary branch.** This branch contains an unpublished distillation experiment (`agora_m`) that is not part of any paper. Refer to the `main` branch for the published AGORA model and results.
+
 <p align="center">
   <a href="https://ramazan793.github.io/AGORA"><img src="https://img.shields.io/badge/Project-Page-blue.svg" alt="Project Page"></a>
   <a href="https://arxiv.org/abs/2512.06438"><img src="https://img.shields.io/badge/arXiv-2512.06438-b31b1b.svg" alt="arXiv"></a>
@@ -300,14 +302,14 @@ Run on the stage-2 model (`DGGHEAD-158 @ 20500`).
 ```bash
 uv run --no-sync python scripts/metrics/measure_fps.py
 ```
-Reports render-only FPS (excludes model load). Paper: **~330 FPS** at 512², batch 8.
+Reports render-only FPS (excludes model load). Paper: **250 FPS** at 512² on a single RTX A6000.
 
 ### FID
 
 ```bash
 uv run --no-sync python scripts/metrics/evaluate_fid.py DGGHEAD-158 --fid 50000 --local
 ```
-`--local` repoints the saved dataset path to `$GGHEAD_DATA_PATH`. Paper: **FID-50k ≈ 3.21**.
+`--local` repoints the saved dataset path to `$GGHEAD_DATA_PATH`. Paper: **FID-50k = 3.17**.
 
 ### ID (identity consistency)
 
