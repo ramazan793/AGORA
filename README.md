@@ -13,7 +13,7 @@
   <img src="https://ramazan793.github.io/AGORA/static/images/method_overview.png" width="100%">
 </p>
 
-> **AGORA** generates high-fidelity, animatable 3D Gaussian head avatars that render at **250+ FPS** on GPU and **~9 FPS on CPU-only inference**.
+> **AGORA** generates high-fidelity, animatable 3D Gaussian head avatars that render at **250 FPS** on GPU and **~9 FPS on CPU-only inference**.
 
 This repository contains the official implementation. It covers three capabilities:
 
@@ -159,17 +159,15 @@ These large assets live outside the repo. The concrete locations used for the pa
 | SMIRK FLAME meshes | `.../FFHQ_png_512/smirk/crop/img*/{shape,exp,globalpose,jawpose,cam,eyelid}.npy` | Per-image FLAME params. |
 | Driving videos | `.../reenact_test_videos/<name>/` | SMIRK-processed clips (e.g. `obama_next3d`, 1786 frames). |
 
-> **Bundled release weights (download from Google Drive).** A few large binaries are referenced from
-> `assets/` but are **git-ignored**, hosted on Google Drive →
-> <https://drive.google.com/drive/folders/1ZZoKtZsOodnYUfTHrH1P1QxHciIuXsoY?usp=sharing>
-> Download them and place under `assets/`, preserving the relative paths below:
+> **Release weights.** A few large binaries are referenced from `assets/` but are **git-ignored** and are
+> distributed separately. Place them under `assets/`, preserving the relative paths below:
 > - `assets/checkpoints/DGGHEAD-148_stage1_res256/checkpoint-6500.pkl` (stage-1) and
 >   `assets/checkpoints/DGGHEAD-158_stage2_res512/checkpoint-20500.pkl` (stage-2) — the small config JSONs
 >   beside them **are** committed.
 > - `assets/fused_params_dataset.npy` (~200 MB, FFHQ FLAME/camera priors).
 >
-> Together ~1.7 GB. Note the inference/metric scripts also load checkpoints **by run name from
-> `$GGHEAD_MODELS_PATH`** (the `assets/checkpoints/` copies are for convenient bundling/reference).
+> Note the inference/metric scripts also load checkpoints **by run name from `$GGHEAD_MODELS_PATH`**
+> (the `assets/checkpoints/` copies are for convenient bundling/reference).
 
 **Driving-video format** (per clip `<name>/`): `<name>/smirk/<frame>/{shape,exp,globalpose,jawpose,cam,eyelid}.npy`
 plus `<name>/<frame>.png` (the RGB driving frames, 1:1 with the smirk folders). To process your own video,
@@ -195,32 +193,17 @@ export CUDA_VISIBLE_DEVICES=0
 
 ## 1. Inference — generate and reenact an avatar
 
-### Generate an avatar (extract blendshapes)
-
 ```bash
-uv run --no-sync python scripts/deform_blendshapes/create_blendshapes.py \
-    --run-name DGGHEAD-158 --checkpoint 20500 --id-seed 10
-```
-
-Loads the model, samples identity `seed 10`, renders a neutral 512² avatar plus expression/jaw blendshape
-sweeps (to inspect the generated avatar), and extracts the blendshape planes used by the *alternative*
-blendshape-based reenactor. Outputs:
-- `scripts/deform_blendshapes/data/DGGHEAD-158_20500_seed10_eps1.0/blendshape_planes.pt`
-- `scripts/deform_blendshapes/vis/.../renders/{neutral.png, exp/*.png, jaw/*.png}`
-
-### Reenact (drive the avatar with a video)
-
-```bash
-uv run --no-sync python scripts/deform_blendshapes/reenact_avatar_multi_id.py \
+uv run --no-sync python scripts/inference/reenact_avatar_multi_id.py \
     --run-name DGGHEAD-158 --checkpoint 20500 --id-seed 10 \
     --cam-scale 8 --pairs-list scripts/reenact_list.txt
 ```
 
 This is the canonical AGORA reenactment: it generates the avatar from `--id-seed` and drives its
-deformation branch **directly** from each driving frame's SMIRK FLAME parameters — no pre-extracted
-blendshape planes needed. `--cam-scale 8` is required for correct framing; the remaining paper settings
-are already the script defaults (`--synthesis-flame-cond 1 --cache-backbone 1 --use-narrow-mask 0
---savgol-win 5 --resolution 512`).
+deformation branch **directly** from each driving frame's SMIRK FLAME parameters. `--cam-scale 8` is
+required for correct framing (omitting it produces a seam/scale artifact on the face); the remaining
+paper settings are already the script defaults (`--synthesis-flame-cond 1 --cache-backbone 1
+--use-narrow-mask 0 --savgol-win 5 --resolution 512`).
 
 `reenact_list.txt` is one driving clip per line. The simplest valid line is a single folder token, which
 auto-derives the smirk/RGB sub-paths:
@@ -229,13 +212,8 @@ auto-derives the smirk/RGB sub-paths:
 /path/to/reenact_test_videos/obama_next3d
 ```
 
-Outputs (in `scripts/deform_blendshapes/results/dynamic_view/DGGHEAD-158_20500__intrinsics_s_8.0/seed10/`):
+Outputs (in `scripts/inference/results/dynamic_view/DGGHEAD-158_20500__intrinsics_s_8.0/seed10/`):
 `<vid>.mp4` (avatar | driver, side-by-side) and `left_<vid>.mp4` (avatar only).
-
-> **Alternative (blendshape-based) reenactor.** `reenact_avatar_multi_id__deform_blendshapes.py` drives the
-> avatar from the precomputed `blendshape_planes.pt` produced above (pass `--blendshape-planes-path … --cam-scale 8`).
-> It approximates the direct reenactor; prefer `reenact_avatar_multi_id.py` for the headline result, and
-> **always pass `--cam-scale 8`** (omitting it produces a seam/scale artifact on the face).
 
 ---
 
@@ -346,7 +324,7 @@ Notes:
 src/gghead/                       # the model package (import as `src.gghead`)
 scripts/
   train_gghead.py                 # GAN training entry point (stage 1 & 2)
-  deform_blendshapes/             # Inference: create_blendshapes + reenact_avatar_multi_id (canonical, direct)
+  inference/                      # reenact_avatar_multi_id.py: generate an avatar and drive it with a video
   metrics/                        # FID, FPS, ID, AED
 assets/
   gghead/                         # GGHEAD template meshes (.obj/.mtl) + deform masks / uv-position weights
@@ -403,7 +381,8 @@ If you find this work useful, please cite:
 @article{fazylov2025agora,
     author = {Fazylov, Ramazan and Zagoruyko, Sergey and Parkin, Aleksandr and Lefkimmiatis, Stamatis and Laptev, Ivan},
     title = {{AGORA: Adversarial Generation Of Real-time Animatable 3D Gaussian Head Avatars}},
-    journal = {arXiv preprint arXiv:2512.06438},
-    year = {2025}
+    journal = {arXiv preprint arXiv:2512.06438v4},
+    year = {2025},
+    url = {https://arxiv.org/abs/2512.06438v4}
 }
 ```

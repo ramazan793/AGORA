@@ -46,7 +46,7 @@ checkpoints/
 # (Note: no !src/** — src/ is code; let the __pycache__/*.pyc/*.egg-info rules above apply there.)
 !assets/**
 
-# ...but the big release weights stay OUT of git — host externally (gdrive); see README "Data & checkpoints".
+# ...but the big release weights stay OUT of git — distributed separately; see README "Data & checkpoints".
 # Small templates (assets/gghead/*, assets/flame/*) and the checkpoint *.json configs above remain committed.
 assets/checkpoints/**/*.pkl
 assets/fused_params_dataset.npy
